@@ -1,0 +1,9 @@
+{
+  "name": "Oposicions Lloret Comunicació",
+  "short_name": "Opos Lloret",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#102c45",
+  "icons": []
+}
