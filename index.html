@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Eina d'estudi per preparar l'oposició de tècnic/a auxiliar de comunicació de Lloret de Mar: temari, tests, targetes i pràctiques." />
+  <meta name="theme-color" content="#163b4b" />
+  <meta property="og:title" content="Oposicions Lloret · Comunicació" />
+  <meta property="og:description" content="Temari, tests, targetes i supòsits pràctics per preparar la prova de comunicació municipal." />
+  <meta name="color-scheme" content="light" />
+  <title>Oposicions Lloret · Comunicació</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json" />
+</head>
+<body>
+  <a href="#dashboard" class="skip-link">Salta al contingut</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <div class="brand-line"><span class="brand-mark" aria-hidden="true">✳</span><span>Espai personal d'estudi · Lloret de Mar</span></div>
+        <p class="eyebrow">Preparació d'oposicions · C1</p>
+        <h1>Tècnic/a Auxiliar<br>de Comunicació</h1>
+        <p class="hero-description">El teu temari, les preguntes i els exercicis pràctics, organitzats per arribar preparat/da al dia de l'examen.</p>
+        <div class="hero-pills"><span>Temari general</span><span>Web municipal</span><span>Protocol</span><span>Imatge institucional</span></div>
+      </div>
+      <div class="countdown" aria-label="Compte enrere fins al 28 de novembre de 2026">
+        <span class="countdown-kicker">Compte enrere</span>
+        <span id="daysLeft" aria-live="polite">--</span>
+        <small>dies · examen 28/11</small>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Navegació principal">
+    <button class="tab active" data-view="dashboard" aria-current="page">Avui</button>
+    <button class="tab" data-view="temari">Temari</button>
+    <button class="tab" data-view="tests">Tests</button>
+    <button class="tab" data-view="flashcards">Targetes</button>
+    <button class="tab" data-view="practiques">Pràctiques</button>
+    <button class="tab" data-view="pla">Pla d'estudi</button>
+  </nav>
+
+  <main id="mainContent">
+    <section id="dashboard" class="view active">
+      <div class="page-intro">
+        <p class="eyebrow">EL TEU TAULER</p>
+        <h2>Un pas més cap a l'examen.</h2>
+        <p>Una mica de teoria, pràctica i repàs cada dia. Comença per la sessió recomanada o posa't a prova.</p>
+      </div>
+      <div class="stats" aria-label="Resum de l'estudi">
+        <div class="stat"><span class="stat-icon" aria-hidden="true">◷</span><div><strong id="studyMinutes">0</strong><small>Minuts d'estudi</small></div></div>
+        <div class="stat"><span class="stat-icon" aria-hidden="true">✓</span><div><strong id="testsDone">0</strong><small>Tests completats</small></div></div>
+        <div class="stat"><span class="stat-icon" aria-hidden="true">▤</span><div><strong>12</strong><small>Blocs del temari</small></div></div>
+      </div>
+      <div class="grid two">
+        <article class="card primary">
+          <span class="card-label">La sessió recomanada</span>
+          <h2>Què estudies avui?</h2>
+          <p id="todayTask" class="lead"></p>
+          <div class="actions">
+            <button id="markStudy" class="btn">+ Registra 60 minuts</button>
+            <button id="startQuickTest" class="btn secondary">Fes un test ràpid →</button>
+          </div>
+          <p class="card-note">Registra el temps només quan hagis completat la sessió.</p>
+        </article>
+        <article class="card">
+          <span class="card-label">Constància</span>
+          <h2>El teu progrés</h2>
+          <p class="muted">Cada sessió compta. Aquest indicador mostra el camí fins a un objectiu orientatiu de 45 hores.</p>
+          <div class="progress-head"><strong>Hores acumulades</strong><small id="progressLabel">0% de l'objectiu</small></div>
+          <div class="progress-wrap" role="progressbar" aria-label="Progrés d'hores d'estudi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progressBar" class="progress"></div></div>
+          <p class="card-note">El progrés es desa només en aquest navegador.</p>
+          <button id="resetProgress" class="linkbtn">Reinicia el seguiment</button>
+        </article>
+      </div>
+      <article class="card">
+        <span class="card-label">Guia de prioritats</span>
+        <h2>En què ens centrarem?</h2>
+        <ol class="priority">
+          <li>Procediment administratiu i organització municipal.</li>
+          <li>Web municipal: notícia, agenda, avís, ban i accessibilitat.</li>
+          <li>Protocol institucional: actes, presidència i intervencions.</li>
+          <li>Imatge institucional de Lloret: marca, cartells i jerarquia visual.</li>
+          <li>Redacció institucional i xarxes socials.</li>
+        </ol>
+      </article>
+    </section>
+
+    <section id="temari" class="view">
+      <div class="section-head"><div><p class="eyebrow">01 · CONTINGUTS</p><h2>Temari per blocs</h2><p>Consulta els punts clau, practica el que has après i cerca per tema.</p></div><input id="searchSyllabus" type="search" aria-label="Cerca al temari" placeholder="Cerca: protocol, Ple, web, taxes..." /></div>
+      <p class="quiz-progress" id="syllabusCount" aria-live="polite"></p>
+      <div id="syllabusList" class="cards"></div>
+    </section>
+
+    <section id="tests" class="view">
+      <div class="section-head"><div><p class="eyebrow">02 · ENTRENAMENT</p><h2>Tests tipus examen</h2><p>Preguntes amb quatre alternatives. Correcció raonada i penalització de -0,25 per error.</p></div><select id="testFilter" aria-label="Filtra la categoria del test"><option value="all">Tots els temes</option><option value="general">Temari general</option><option value="web">Web i comunicació</option><option value="protocol">Protocol</option><option value="imatge">Imatge institucional</option></select></div>
+      <div class="test-controls"><button id="newTest" class="btn">Genera un test →</button><span id="testMeta">Tria una categoria i comença.</span></div>
+      <div id="quiz" aria-live="polite"></div>
+      <button id="correctTest" class="btn hidden">Corregeix les respostes</button>
+      <div id="scoreBox" class="score hidden" aria-live="polite"></div>
+    </section>
+
+    <section id="flashcards" class="view">
+      <div class="section-head"><div><p class="eyebrow">03 · MEMÒRIA ACTIVA</p><h2>Targetes per memoritzar</h2><p>Recorda la definició abans de girar la targeta. Avança al teu ritme.</p></div><button id="shuffleCards" class="btn secondary">Barreja les targetes</button></div>
+      <p class="flash-counter" id="cardCounter" aria-live="polite"></p>
+      <div id="flashcardBox" class="flashcard" role="button" tabindex="0" aria-label="Mostra o amaga la resposta"><p class="eyebrow">Toca per veure la resposta</p><h3 id="flashQ"></h3><p id="flashA" class="hidden"></p></div>
+      <div class="actions center"><button id="prevCard" class="btn secondary">← Anterior</button><button id="nextCard" class="btn">Següent →</button></div>
+    </section>
+
+    <section id="practiques" class="view">
+      <div class="page-intro"><p class="eyebrow">04 · APLICACIÓ</p><h2>Supòsits pràctics</h2><p>Posa't en situació: prepara la resposta com si fossis a l'examen i revisa els criteris d'autocorrecció.</p></div>
+      <div id="practiceList" class="cards"></div>
+    </section>
+
+    <section id="pla" class="view">
+      <div class="page-intro"><p class="eyebrow">05 · ORGANITZACIÓ</p><h2>Pla fins al 28 de novembre</h2><p>Setmanes de treball combinant temari general, web, protocol i imatge institucional.</p></div>
+      <div id="planList" class="timeline"></div>
+    </section>
+  </main>
+  <footer><p>Material de pràctica no oficial · Continguts específics pendents de contrastar amb les bases de Tècnic/a Auxiliar de Comunicació · El progrés queda desat al teu dispositiu.</p></footer>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
