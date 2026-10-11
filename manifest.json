@@ -1,9 +1,10 @@
 {
-  "name": "Oposicions Lloret Comunicació",
-  "short_name": "Opos Lloret",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#f4f6fa",
-  "theme_color": "#102c45",
-  "icons": []
+ "name":"Oposicions Lloret · Informàtica C1",
+ "short_name":"Opos Lloret TIC",
+ "description":"Temari i tests de Tècnic/a Auxiliar d'Informàtica 19-2025",
+ "start_url":"./index.html",
+ "display":"standalone",
+ "theme_color":"#102f40",
+ "background_color":"#f5f7f7",
+ "lang":"ca"
 }
