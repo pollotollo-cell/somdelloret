@@ -1,154 +1,64 @@
-const $ = (s, root=document) => root.querySelector(s);
-const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-
-let state;
-try { state = JSON.parse(localStorage.getItem('oposLloretProgress') || 'null') || {minutes:0,tests:0}; }
-catch { state = {minutes:0,tests:0}; }
-let currentQuiz = [];
-let currentCard = 0;
-let cardFlipped = false;
-
-function save(){ localStorage.setItem('oposLloretProgress', JSON.stringify(state)); renderProgress(); }
-function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
-function shuffle(arr){
-  const copy = [...arr];
-  for(let i = copy.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+(()=>{
+'use strict';
+const T=window.TOPICS||[], Q=window.QUESTIONS||[];
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const SAVED='opos_lloret_informatica_c1_2026_v1';
+let progress={read:{},history:[],theme:'light'};
+try{const stored=JSON.parse(localStorage.getItem(SAVED)||'{}');progress={...progress,...stored,read:stored.read||{},history:stored.history||[]}}catch(_e){}
+let view='inici', topicId=1, search='', area='Tots', priority='Totes', cardDeck=[], cardDeckFilter=null, cardPos=0, cardBack=false, cardFilter='Tots', quiz=null,timerId=null;
+const areas=['Tots','General','Sistemes','Xarxes','Seguretat','Desenvolupament','Dades','Administració digital'];
+const areaTitle={'General':'Temari general','Sistemes':'Sistemes i serveis','Xarxes':'Xarxes i comunicacions','Seguretat':'Ciberseguretat','Desenvolupament':'Desenvolupament i projectes','Dades':'Bases de dades i IA','Administració digital':'Administració electrònica'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>');
+const choice=(items,value)=>items.map(x=>`<option value="${esc(x)}" ${x===value?'selected':''}>${esc(x)}</option>`).join('');
+const dcount=()=>Math.max(0,Math.ceil((new Date(2026,10,28,0,0,0)-new Date())/86400000));
+const numRead=()=>T.filter(x=>progress.read[x.id]).length;
+const save=()=>{try{localStorage.setItem(SAVED,JSON.stringify(progress))}catch(e){console.warn('No s’ha pogut desar el progrés',e)}};
+const notify=message=>{let el=$('#toast');el.textContent=message;el.classList.add('active');setTimeout(()=>el.classList.remove('active'),2300)};
+function activateNav(){ $$('.nav-link').forEach(x=>x.classList.toggle('is-active',x.dataset.view===view)); const map={inici:'Panell general',temari:'Temari',targetes:'Targetes',tests:'Tests d’examen',pla:'Pla d’estudi'};$('#viewLabel').textContent=map[view]||'Temari'; }
+function render(){activateNav();$('#content').innerHTML=({inici:home,temari:topicsView,targetes:cardsView,tests:testView,pla:planView})[view]();}
+function go(v){view=v;closeMenu();render();window.scrollTo({top:0,behavior:'instant'});}
+const btn=(action,text,cls='btn-primary',extras='')=>`<button type="button" class="btn ${cls}" data-action="${action}" ${extras}>${text}</button>`;
+function progressBar(){return `<div class="topic-progress" aria-label="Progrés dels temes"><span style="width:${Math.round(numRead()/40*100)}%"></span></div>`}
+function home(){const read=numRead(), percent=Math.round(read/40*100), latest=progress.history.at(-1);return `
+<section class="hero"><div class="eyebrow">OPOSICIÓ 19-2025 · AJUNTAMENT DE LLORET</div><h1>Estudia els 40 temes<br>amb un pla clar.</h1><p>Resums explicats, esquemes, 120 targetes de repàs i 56 preguntes originals. Tot organitzat segons l'annex I de les bases de Tècnic/a Auxiliar d'Informàtica.</p><div class="hero-actions">${btn('goTopics','Obrir el temari →','btn-white')}${btn('goTests','Fer un simulacre','btn-ghost')}</div></section>
+<div class="metric-grid"><div class="metric"><span class="metric-icon">▦</span><div class="metric-value">40</div><div class="metric-label">Temes oficials</div></div><div class="metric"><span class="metric-icon">▤</span><div class="metric-value">120</div><div class="metric-label">Targetes de memòria</div></div><div class="metric"><span class="metric-icon">◎</span><div class="metric-value">${read}/40</div><div class="metric-label">Temes marcats com estudiats</div></div><div class="metric"><span class="metric-icon">▱</span><div class="metric-value">${dcount()}</div><div class="metric-label">Dies fins al 28/11</div></div></div>
+<div class="two-cols"><div><section class="panel"><div class="section-top"><h2>El teu progrés</h2><span class="small-muted">${percent}% del temari</span></div>${progressBar()}<p class="small-muted">Marca un tema com a estudiat després de llegir-lo i repassar les targetes. El seguiment es desa només en aquest navegador.</p><div class="inline-actions">${btn('resume','Continuar per on anava')}${btn('goCards','Practicar targetes','btn-outline')}</div></section><section class="panel"><h2>Què estudiar primer?</h2><div class="weekly-note"><span class="circle-number">1</span><p><strong>Procediment i organització</strong><br>Temes 2, 3 i 4: atribucions del Ple, quòrums i fases.</p></div><div class="weekly-note"><span class="circle-number">2</span><p><strong>Linux, SQL i servidors</strong><br>Temes 10, 18, 26 i 27: ordres, Apache i consultes.</p></div><div class="weekly-note"><span class="circle-number">3</span><p><strong>Administració digital</strong><br>Temes 34–40: documents, AOC, transparència, ENS/ENI i RGPD.</p></div>${btn('goPlan','Veure tot el calendari','btn-outline')}</section></div><div><section class="panel"><h2>Dades reals de l'examen</h2><ul class="simple-list"><li><strong>Test</strong><br>20 preguntes en 30 minuts</li><li><strong>Puntuació</strong><br>+1 encert; −0,25 error; 0 en blanc</li><li><strong>Prova pràctica</strong><br>Fins a 2 hores, eliminatòria</li><li><strong>Temari</strong><br>8 generals + 32 específics</li></ul></section><section class="panel"><h2>Últim test</h2>${latest?`<p><strong>${latest.score.toFixed(2).replace('.',',')} / 20</strong> · ${latest.correctes} encerts · ${latest.date}</p><p class="small-muted">${latest.total} preguntes, puntuació normalitzada a 20.</p>`:'<p class="small-muted">Encara no hi ha resultats de tests. Comença amb un simulacre de 20 preguntes.</p>'}${btn('goTests','Entrar als tests','btn-outline')}</section></div></div>
+<div class="alert info"><strong>Material d'entrenament.</strong> Els resums i tests són originals; els enunciats dels temes provenen de l'annex I. Consulta les normes i manuals enllaçats per estudiar-ne la versió íntegra. El tema 38 cita una norma derogada i el tema 40 incorpora un fragment duplicat a les bases.</div>`}
+function topicListHtml(){const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();let selected=T.filter(t=>(area==='Tots'||t.area===area)&&(priority==='Totes'||t.priority===priority)&&norm([t.title,t.official,t.intro,...t.sections.map(s=>s.heading+' '+s.body)].join(' ')).includes(norm(search)));
+return selected.length?selected.map(t=>`<button type="button" class="topic-link ${topicId===t.id?'active':''}" data-topic="${t.id}" title="Tema ${t.id}: ${esc(t.title)}"><span class="topic-no">${String(t.id).padStart(2,'0')}</span><span class="title">${esc(t.title)}</span>${progress.read[t.id]?'<span class="mini-done" title="Estudiat">✓</span>':''}</button>`).join(''):`<div class="empty">Cap tema coincideix amb els filtres.</div>`;
 }
-
-function renderCountdown(){
-  const [year, month, day] = EXAM_DATE.split('-').map(Number);
-  const now = new Date();
-  const todayDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const examDay = Date.UTC(year, month-1, day);
-  const diff = Math.round((examDay - todayDay)/(1000*60*60*24));
-  $('#daysLeft').textContent = diff > 0 ? diff : '0';
-}
-function renderProgress(){
-  $('#studyMinutes').textContent = state.minutes;
-  $('#testsDone').textContent = state.tests;
-  const pct = clamp((state.minutes / (60*45))*100,0,100);
-  $('#progressBar').style.width = pct + '%';
-  $('#progressLabel').textContent = Math.round(pct) + '% de l\'objectiu';
-  $('.progress-wrap').setAttribute('aria-valuenow', Math.round(pct));
-}
-function renderToday(){
-  const day = new Date().getDay();
-  const tasks = [
-    'Repàs suau: 20 preguntes + 1 targeta de cada bloc.',
-    'Temari general: procediment o organització municipal + 10 preguntes.',
-    'Web municipal: redacta una notícia curta i revisa titulars.',
-    'Protocol: fes una escaleta d’acte institucional.',
-    'Imatge institucional: analitza una peça gràfica i detecta errors.',
-    'Test barrejat de 20 preguntes + correcció d’errors.',
-    'Pràctica llarga: cas de comunicació complet.'
-  ];
-  $('#todayTask').textContent = tasks[day];
-}
-
-function switchView(id){
-  $$('.tab').forEach(b=>{ b.classList.toggle('active', b.dataset.view===id); if(b.dataset.view===id) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-  $$('.view').forEach(v=>v.classList.toggle('active', v.id===id));
-}
-
-function renderSyllabus(){
-  const q = ($('#searchSyllabus')?.value || '').toLowerCase();
-  const list = $('#syllabusList');
-  list.innerHTML = '';
-  const filtered = syllabus.filter(t => !q || (t.title+' '+t.points.join(' ')+' '+t.tags.join(' ')).toLowerCase().includes(q));
-  $('#syllabusCount').textContent = `${filtered.length} blocs disponibles`;
-  filtered.forEach((t, index)=>{
-    const el = document.createElement('article');
-    el.className = 'card topic';
-    el.innerHTML = `<span class="topic-count">Bloc ${String(index+1).padStart(2,'0')} · ${t.block==='general' ? 'General' : 'Específic'}</span><h3>${t.title}</h3><div>${t.tags.map(x=>`<span class="tag">${x}</span>`).join('')}</div><ul>${t.points.map(p=>`<li>${p}</li>`).join('')}</ul><p class="muted"><strong>Tasca:</strong> ${t.task}</p>`;
-    list.appendChild(el);
-  });
-  if (!list.children.length) list.innerHTML = '<p class="empty-state">No s\'ha trobat cap bloc amb aquest terme. Prova una altra cerca.</p>';
-}
-
-function generateQuiz(){
-  const filter = $('#testFilter').value;
-  const pool = questions.filter(q => filter === 'all' || q.cat === filter);
-  currentQuiz = shuffle(pool).slice(0, Math.min(20, pool.length));
-  const box = $('#quiz');
-  box.innerHTML = '';
-  currentQuiz.forEach((q,i)=>{
-    const el = document.createElement('article');
-    el.className='question';
-    el.innerHTML = `<h3>${i+1}. ${q.q}</h3>` + q.a.map((op,j)=>`<label class="option"><input type="radio" name="q${i}" value="${j}"> ${String.fromCharCode(65+j)}. ${op}</label>`).join('') + `<p class="explain hidden"></p>`;
-    box.appendChild(el);
-  });
-  $('#correctTest').classList.remove('hidden');
-  $('#correctTest').disabled = false;
-  $('#scoreBox').classList.add('hidden');
-  $('#testMeta').textContent = `${currentQuiz.length} preguntes disponibles · correcció amb -0,25 per error`;
-}
-
-function correctQuiz(){
-  if ($('#correctTest').disabled || !currentQuiz.length) return;
-  let ok=0, bad=0, blank=0;
-  $$('.question').forEach((el,i)=>{
-    const q = currentQuiz[i];
-    const selected = $(`input[name="q${i}"]:checked`);
-    const options = $$('.option', el);
-    options.forEach((opt,j)=>{
-      opt.classList.toggle('correct', j===q.correct);
-    });
-    if(!selected){ blank++; }
-    else if(Number(selected.value)===q.correct){ ok++; }
-    else { bad++; options[Number(selected.value)].classList.add('wrong'); }
-    const exp = $('.explain', el);
-    exp.textContent = q.exp;
-    exp.classList.remove('hidden');
-  });
-  const score = ok - bad*0.25;
-  $('#scoreBox').innerHTML = `Resultat: ${ok} correctes · ${bad} errors · ${blank} en blanc · puntuació orientativa: ${score.toFixed(2)} / ${currentQuiz.length}`;
-  $('#scoreBox').classList.remove('hidden');
-  $('#correctTest').disabled = true;
-  $$('#quiz input').forEach(input => input.disabled = true);
-  state.tests += 1; save();
-}
-
-function renderCard(){
-  const [q,a] = flashcards[currentCard];
-  $('#flashQ').textContent = q;
-  $('#flashA').textContent = a;
-  $('#flashA').classList.toggle('hidden', !cardFlipped);
-  $('#cardCounter').textContent = `Targeta ${currentCard + 1} de ${flashcards.length}`;
-}
-
-function renderPractices(){
-  const list = $('#practiceList'); list.innerHTML='';
-  practices.forEach(p=>{
-    const el = document.createElement('article'); el.className='card topic';
-    el.innerHTML = `<h3>${p.title}</h3><p>${p.text}</p><p><strong>Comprova:</strong></p><ul>${p.checklist.map(x=>`<li>${x}</li>`).join('')}</ul>`;
-    list.appendChild(el);
-  });
-}
-function renderPlan(){
-  const list = $('#planList'); list.innerHTML='';
-  plan.forEach(p=>{
-    const el = document.createElement('article'); el.className='week';
-    el.innerHTML = `<h3>${p.week}</h3><p><strong>${p.focus}</strong></p><ul>${p.tasks.map(x=>`<li>${x}</li>`).join('')}</ul>`;
-    list.appendChild(el);
-  });
-}
-
-$$('.tab').forEach(btn=>btn.addEventListener('click',()=>switchView(btn.dataset.view)));
-$('#markStudy').addEventListener('click',()=>{state.minutes += 60; save();});
-$('#resetProgress').addEventListener('click',()=>{ if(confirm('Vols reiniciar el progrés?')){ state.minutes=0; state.tests=0; save(); }});
-$('#startQuickTest').addEventListener('click',()=>{switchView('tests'); generateQuiz();});
-$('#newTest').addEventListener('click',generateQuiz);
-$('#correctTest').addEventListener('click',correctQuiz);
-$('#searchSyllabus').addEventListener('input',renderSyllabus);
-$('#flashcardBox').addEventListener('click',()=>{cardFlipped=!cardFlipped; renderCard();});
-$('#flashcardBox').addEventListener('keydown',(e)=>{if(e.key==='Enter' || e.key===' '){e.preventDefault();cardFlipped=!cardFlipped;renderCard();}});
-$('#nextCard').addEventListener('click',()=>{currentCard=(currentCard+1)%flashcards.length; cardFlipped=false; renderCard();});
-$('#prevCard').addEventListener('click',()=>{currentCard=(currentCard-1+flashcards.length)%flashcards.length; cardFlipped=false; renderCard();});
-$('#shuffleCards').addEventListener('click',()=>{const mixed = shuffle(flashcards); flashcards.splice(0, flashcards.length, ...mixed); currentCard=0; cardFlipped=false; renderCard();});
-
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
-renderCountdown(); renderProgress(); renderToday(); renderSyllabus(); renderCard(); renderPractices(); renderPlan();
+function topicsView(){return `<p class="eyebrow">ANNEX I · 40 TEMES</p><h1 class="page-title">Temari general i específic</h1><p class="lead">Selecciona qualsevol tema per llegir-ne el resum complet, veure l'esquema, practicar conceptes i consultar les fonts. Els 40 temes estan disponibles sense connexió.</p><div class="filters"><input aria-label="Cercar temes" class="search" id="searchTopics" placeholder="Cerca articles, SQL, Linux, notificacions..." value="${esc(search)}"><select id="areaFilter" class="select" aria-label="Filtrar per bloc">${choice(areas,area)}</select><select id="priorityFilter" class="select" aria-label="Filtrar per prioritat">${choice(['Totes','Molt alta','Alta','Mitjana'],priority)}</select></div><div class="topic-layout"><nav class="topic-list" id="topicList" aria-label="Llista de temes">${topicListHtml()}</nav><article class="topic-detail" id="topicDetail">${topicHtml(T[topicId-1])}</article></div>`}
+function topicHtml(t){if(!t)return '<p>Tema no disponible.</p>';return `<div class="topic-headline"><div><div class="priority-box"><span class="pill">Tema ${String(t.id).padStart(2,'0')} · ${esc(t.area)}</span><span class="pill ${t.priority==='Molt alta'?'urgent':''}">${esc(t.priority)} prioritat</span>${progress.read[t.id]?'<span class="pill done">✓ Estudiat</span>':''}</div><h2>${esc(t.title)}</h2></div><div class="inline-actions">${btn('markTopic',progress.read[t.id]?'✓ Estudiat · desmarcar':'Marcar com estudiat',progress.read[t.id]?'btn-outline':'btn-primary',`data-id="${t.id}"`)}</div></div><p class="intro">${fmt(t.intro)}</p><div class="official"><b>ENUNCIAT LITERAL DE LES BASES</b>${esc(t.official)}</div><h3 class="section-title">Resum per estudiar</h3>${t.sections.map(s=>`<section class="article-block"><h3>${esc(s.heading)}</h3><p>${fmt(s.body)}</p></section>`).join('')}<section class="schema"><h3>Esquema per memoritzar</h3>${t.schema.map(s=>`<div class="schema-line">${esc(s)}</div>`).join('')}</section><div class="sep"></div><h3 class="section-title">3 targetes clau</h3><div class="concept-grid">${t.cards.map(c=>`<div class="concept"><strong>${esc(c.q)}</strong><p>${fmt(c.a)}</p></div>`).join('')}</div><div class="sep"></div><h3 class="section-title">Aplica-ho a un cas</h3><p class="lead" style="margin:0 0 18px;font-size:14px">${fmt(t.case||'Posa un exemple municipal en què s’apliqui aquest concepte i explica què comprovaries.')}</p><h3 class="section-title">Fonts per ampliar i comprovar</h3><div class="links">${t.links.length?t.links.map(l=>`<a class="source-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">↗ ${esc(l.name)}</a>`).join(''):'<span class="small-muted">Completa l’estudi amb documentació oficial del fabricant i bibliografia especialitzada.</span>'}</div><div class="alert info">Els resums són material original de síntesi. No substitueixen la lectura completa de les normes o de la documentació oficial.</div><div class="inline-actions">${btn('topicCards','Veure targetes del tema','btn-outline',`data-id="${t.id}"`)}${btn('topicQuiz','Fer preguntes del tema','btn-outline',`data-id="${t.id}"`)}${btn('nextTopic','Següent tema →','btn-primary',`data-id="${t.id}"`)}<button type="button" class="btn btn-outline" onclick="window.print()">Imprimir el tema</button></div><p class="print-note">Oposicions Lloret · Apunts de preparació · Tema ${t.id} · No oficial</p>`}
+function makeDeck(){if(cardDeckFilter!==cardFilter){cardDeck=T.filter(t=>cardFilter==='Tots'||cardFilter===t.area||cardFilter===String(t.id)).flatMap(t=>t.cards.map(c=>({...c,id:t.id,title:t.title})));cardDeckFilter=cardFilter;}if(cardPos>=cardDeck.length)cardPos=0;}
+function cardsView(){makeDeck();const c=cardDeck[cardPos];return `<p class="eyebrow">REPÀS ACTIU</p><h1 class="page-title">120 targetes de memòria</h1><p class="lead">Intenta respondre en veu alta abans de girar la targeta. Després passa a la següent; canviar de bloc reinicia la selecció.</p><div class="filters"><label class="small-muted" for="cardFilter">Bloc de repàs</label><select id="cardFilter" class="select">${choice(areas,cardFilter)}${/^\d+$/.test(cardFilter)?`<option value="${esc(cardFilter)}" selected>Tema ${esc(cardFilter)}</option>`:''}</select>${btn('shuffleCards','Barrejar targetes','btn-outline')}</div><div class="card-stage">${c?`<div class="flash-progress"><span>Tema ${c.id} · ${esc(c.title)}</span><strong>${cardPos+1} de ${cardDeck.length}</strong></div><button type="button" id="flashcard" data-action="flipCard" data-flipped="${cardBack?'true':'false'}" class="flashcard"><span class="tiny">${cardBack?'RESPOSTA':'PREGUNTA'}</span><span class="body">${fmt(cardBack?c.a:c.q)}</span><span class="hint">Clica per ${cardBack?'veure la pregunta':'descobrir la resposta'}</span></button><div class="card-controls">${btn('prevCard','← Anterior','btn-outline')}${btn('flipCard','Girar targeta','btn-primary')}${btn('nextCard','Següent →','btn-outline')}</div>`:'<div class="empty">No hi ha targetes per a aquesta selecció.</div>'}</div><p class="small-muted" style="margin-top:15px">També pots utilitzar les tecles de fletxa per avançar o retrocedir i la barra espaiadora per girar la targeta.</p>`}
+const shuffle=a=>{let b=a.slice();for(let i=b.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+function initQuiz(mode,id){let pool=mode==='topic'?Q.filter(q=>q.topic===id):mode==='general'?Q.filter(q=>q.topic<=8):mode==='technic'?Q.filter(q=>q.topic>8):Q;if(mode==='all'){let general=shuffle(Q.filter(q=>q.topic<=8)).slice(0,4);let tech=shuffle(Q.filter(q=>q.topic>8)).slice(0,16);pool=shuffle([...general,...tech]);}else pool=shuffle(pool).slice(0,20);quiz={questions:pool,pos:0,answers:{},finished:false,seconds:mode==='all'?1800:null,mode};if(timerId)clearInterval(timerId);if(quiz.seconds!==null){timerId=setInterval(()=>{if(!quiz||quiz.finished){clearInterval(timerId);return;}quiz.seconds=Math.max(0,quiz.seconds-1);let el=$('#clock');if(el)el.textContent=mmss(quiz.seconds);if(quiz.seconds===0)finishQuiz();},1000);}go('tests')}
+function mmss(n){return `${Math.floor(n/60).toString().padStart(2,'0')}:${(n%60).toString().padStart(2,'0')}`}
+function testView(){if(!quiz)return `<p class="eyebrow">SIMULACRE D'EXAMEN</p><h1 class="page-title">Practica amb preguntes reals d'estil test</h1><p class="lead">56 preguntes originals basades en els 40 temes. Escull un simulacre de 20 preguntes amb temps, o una pràctica breu per bloc. No són preguntes oficials del tribunal.</p><div class="panel quiz-start"><h2>Simulacre com el de la convocatòria</h2><div class="metric-grid" style="margin:15px 0"><div class="metric"><div class="metric-value">20</div><div class="metric-label">Preguntes</div></div><div class="metric"><div class="metric-value">30'</div><div class="metric-label">Temps</div></div><div class="metric"><div class="metric-value">+1</div><div class="metric-label">Encert</div></div><div class="metric"><div class="metric-value">−0,25</div><div class="metric-label">Error</div></div></div>${btn('startAll','Començar simulacre de 20 preguntes')}</div><div class="panel quiz-start"><h2>Practicar per blocs</h2><p class="small-muted">Sense cronòmetre i amb correcció final.</p><div class="inline-actions">${btn('startGeneral','Només general','btn-outline')}${btn('startTechnical','Només específic','btn-outline')}</div></div><div class="alert info">Estratègia: amb 4 opcions, un encert val +1 i una errada resta 0,25. Pots deixar preguntes en blanc. En acabar veuràs per què era correcta cada opció.</div>`;
+if(quiz.finished)return resultHtml();const n=quiz.pos,q=quiz.questions[n],sel=quiz.answers[n];return `<p class="eyebrow">${quiz.mode==='all'?'SIMULACRE CRONOMETRAT':'ENTRENAMENT PER TEMES'}</p><h1 class="page-title">Test de coneixements</h1><div class="panel quiz-start"><div class="quiz-meta"><span>Pregunta ${n+1} de ${quiz.questions.length} · Tema ${q.topic}: ${esc(T[q.topic-1].title)}</span><strong id="clock">${quiz.seconds===null?'Sense temps':mmss(quiz.seconds)}</strong></div>${`<div class="topic-progress"><span style="width:${((n+1)/quiz.questions.length)*100}%"></span></div>`}<h2 class="quiz-question">${esc(q.q)}</h2>${q.options.map((opt,i)=>`<button type="button" class="quiz-option ${sel===i?'selected':''}" data-answer="${i}"><span>${'ABCD'[i]}</span><span>${fmt(opt)}</span></button>`).join('')}<div class="quiz-nav"><div class="inline-actions">${btn('previousQuestion','← Anterior','btn-outline',n===0?'disabled':'')}</div><div class="inline-actions">${btn('clearAnswer','Deixar en blanc','btn-outline')}${n===quiz.questions.length-1?btn('finishQuiz','Finalitzar test','btn-primary'):btn('nextQuestion','Següent →','btn-primary')}</div></div></div><p class="small-muted">Respostes contestades: ${Object.keys(quiz.answers).length}/${quiz.questions.length}. Pots deixar-les en blanc.</p>`}
+function finishQuiz(){if(!quiz||quiz.finished)return;quiz.finished=true;if(timerId){clearInterval(timerId);timerId=null}let a=quiz.questions.reduce((x,q,i)=>{const r=quiz.answers[i];if(r===undefined)x.blank++;else if(r===q.correct)x.correctes++;else x.wrong++;return x},{correctes:0,wrong:0,blank:0});const score=a.correctes-a.wrong*.25;const normalized=score/quiz.questions.length*20;quiz.result={...a,score,normalized};progress.history.push({date:new Date().toLocaleDateString('ca-ES'),score:normalized,total:quiz.questions.length,correctes:a.correctes,wrong:a.wrong});progress.history=progress.history.slice(-20);save();render();}
+function resultHtml(){let r=quiz.result;return `<p class="eyebrow">CORRECCIÓ DEL TEST</p><h1 class="page-title">Resultats i explicacions</h1><div class="panel quiz-start"><div class="score ${r.normalized<10?'warn':''}">${r.normalized.toFixed(2).replace('.',',')} <span style="font-size:19px;color:var(--muted)">/ 20</span></div><p><strong>${r.correctes}</strong> encerts · <strong>${r.wrong}</strong> errors · <strong>${r.blank}</strong> en blanc</p><p class="small-muted">Puntuació real: ${r.score.toFixed(2).replace('.',',')} punts en ${quiz.questions.length} preguntes. Normalitzada a 20 per comparar tests curts.</p><div class="inline-actions">${btn('newQuiz','Tornar als tests','btn-primary')}${btn('startAll','Nou simulacre','btn-outline')}</div></div><div class="panel"><h2>Revisió de totes les preguntes</h2>${quiz.questions.map((q,i)=>{const a=quiz.answers[i];return `<div class="mistake"><b>${i+1}. ${esc(q.q)} <span class="pill ${a===q.correct?'done':a===undefined?'':'urgent'}">${a===undefined?'En blanc':a===q.correct?'Correcta':'Incorrecta'}</span></b><p>La teva resposta: <strong>${a===undefined?'En blanc':`${'ABCD'[a]}. ${esc(q.options[a])}`}</strong></p><p>Correcta: <strong>${'ABCD'[q.correct]}. ${esc(q.options[q.correct])}</strong></p><p>${esc(q.explain)}</p>${btn('jumpResultTopic','Repassar tema '+q.topic,'btn-outline btn-sm',`data-id="${q.topic}"`)}</div>`}).join('')}</div>`}
+const WEEKS=[
+{d:'12–18 oct.',title:'Procediment i SQL',ids:[4,26,27,9,12],detail:'Llei 39/2015: interessats, fases i terminis. Model relacional i consultes SELECT/WHERE/GROUP BY. Diagnòstic de maquinari i còpies.'},
+{d:'19–25 oct.',title:'Ajuntament i sistemes operatius',ids:[2,3,10,11,7],detail:'Ple i alcaldia, quòrums, empleats. Comandes Linux, permisos, Windows 11 i tiquets.'},
+{d:'26 oct.–1 nov.',title:'Administració electrònica i xarxes',ids:[13,14,15,16,34,35,36],detail:'OSI/TCP-IP, LAN/Wi-Fi, documents i expedients, signatura i serveis del Consorci AOC.'},
+{d:'2–8 nov.',title:'Web, Apache i seguretat',ids:[17,18,19,22,23,38],detail:'Tallafocs, Apache/IIS/Tomcat, Docker, HTML/CSS/JS, APIs, ENS i riscos OWASP.'},
+{d:'9–15 nov.',title:'Transparència, dades i IA',ids:[28,29,30,31,37,39,40],detail:'Analítica, dashboards, Reglament IA, smart city, transparència, interoperabilitat ENI i RGPD.'},
+{d:'16–22 nov.',title:'Completar temes i simulacres',ids:[1,5,6,8,20,21,24,25,32,33],detail:'Constitució, contractació, serveis i hisendes, cloud, enginyeria, mobilitat, RPA, projectes i ITIL. Dos simulacres i una pràctica llarga.'},
+{d:'23–27 nov.',title:'Repàs final i errors',ids:[2,3,4,10,18,22,27,34,35,36,37,38,39,40],detail:'Repassar els errors, targetes i una pràctica de SQL + administració electrònica. El dia abans, repàs curt i descans.'}
+];
+function planView(){return `<p class="eyebrow">FINS AL 28 DE NOVEMBRE</p><h1 class="page-title">Calendari intensiu de set setmanes</h1><p class="lead">El calendari prioritza temes que has identificat com a rellevants: procediment, Ple, Linux, Apache, seguretat, SQL, transparència i administració electrònica. No és una predicció de les preguntes del tribunal.</p><div class="weeks">${WEEKS.map((w,i)=>`<section class="week"><div class="date">SETMANA ${i+1} · ${w.d}</div><h3>${esc(w.title)}</h3><p>${esc(w.detail)}</p><div class="topic-tags">${w.ids.map(id=>`<button type="button" class="tag" data-topic-go="${id}">T${id}</button>`).join('')}</div></section>`).join('')}</div><div class="panel" style="margin-top:20px"><h2>Rutina recomanada</h2><p class="lead" style="margin:0">Sessions de 90 minuts: 35 min teoria i esquema, 25 min targetes/recuperació activa, 30 min exercicis i correcció. Dos dies per setmana reserva temps extra per a SQL, administració electrònica o web; des de novembre, fes simulacres cronometrats i revisió d’errors.</p></div>`}
+function pickTopic(id){topicId=Number(id);view='temari';closeMenu();search='';area='Tots';priority='Totes';render();$('#topicDetail')?.scrollIntoView({behavior:'instant',block:'start'});}
+function closeMenu(){const s=$('#sidebar');s.classList.remove('open');$('#menuBtn')?.setAttribute('aria-expanded','false')}
+document.addEventListener('click',e=>{const nav=e.target.closest('[data-view]');if(nav){go(nav.dataset.view);return}const topic=e.target.closest('[data-topic]');if(topic){topicId=Number(topic.dataset.topic);$('#topicList').innerHTML=topicListHtml();$('#topicDetail').innerHTML=topicHtml(T[topicId-1]);$('#topicDetail').scrollIntoView({behavior:'smooth',block:'start'});return}const top=e.target.closest('[data-topic-go]');if(top){pickTopic(top.dataset.topicGo);return}const ans=e.target.closest('[data-answer]');if(ans&&quiz&&!quiz.finished){quiz.answers[quiz.pos]=Number(ans.dataset.answer);render();return}const a=e.target.closest('[data-action]');if(!a)return;let id=Number(a.dataset.id)||topicId;switch(a.dataset.action){case 'goTopics':go('temari');break;case 'goTests':go('tests');break;case 'goCards':cardFilter='Tots';cardPos=0;cardBack=false;go('targetes');break;case 'goPlan':go('pla');break;case 'resume':pickTopic(T.find(t=>!progress.read[t.id])?.id||1);break;case 'markTopic':progress.read[id]=!progress.read[id];save();render();notify(progress.read[id]?'Tema marcat com estudiat':'Tema desmarcat');break;case 'nextTopic':pickTopic(id%40+1);break;case 'topicCards':cardFilter=String(id);cardPos=0;cardBack=false;go('targetes');break;case 'topicQuiz':initQuiz('topic',id);break;case 'flipCard':cardBack=!cardBack;render();break;case 'nextCard':cardPos=(cardPos+1)%cardDeck.length;cardBack=false;render();break;case 'prevCard':cardPos=(cardPos+cardDeck.length-1)%cardDeck.length;cardBack=false;render();break;case 'shuffleCards':cardDeck=shuffle(cardDeck);cardPos=0;cardBack=false;render();notify('Targetes barrejades');break;case 'startAll':initQuiz('all');break;case 'startGeneral':initQuiz('general');break;case 'startTechnical':initQuiz('technic');break;case 'previousQuestion':quiz.pos=Math.max(0,quiz.pos-1);render();break;case 'nextQuestion':quiz.pos=Math.min(quiz.questions.length-1,quiz.pos+1);render();break;case 'clearAnswer':delete quiz.answers[quiz.pos];render();break;case 'finishQuiz':finishQuiz();break;case 'newQuiz':quiz=null;if(timerId)clearInterval(timerId);render();break;case 'jumpResultTopic':pickTopic(id);break;default:break;}});
+document.addEventListener('input',e=>{if(e.target.id==='searchTopics'){search=e.target.value;$('#topicList').innerHTML=topicListHtml()}});
+document.addEventListener('change',e=>{if(e.target.id==='areaFilter'){area=e.target.value;$('#topicList').innerHTML=topicListHtml()}if(e.target.id==='priorityFilter'){priority=e.target.value;$('#topicList').innerHTML=topicListHtml()}if(e.target.id==='cardFilter'){cardFilter=e.target.value;cardPos=0;cardBack=false;render()}});
+document.addEventListener('keydown',e=>{if(view==='targetes'&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){if(e.key==='ArrowRight'){cardPos=(cardPos+1)%cardDeck.length;cardBack=false;render()}if(e.key==='ArrowLeft'){cardPos=(cardPos+cardDeck.length-1)%cardDeck.length;cardBack=false;render()}if(e.key===' '){e.preventDefault();cardBack=!cardBack;render()}}});
+$('#menuBtn').addEventListener('click',()=>{const s=$('#sidebar');let open=s.classList.toggle('open');$('#menuBtn').setAttribute('aria-expanded',String(open))});
+$('#themeToggle').addEventListener('click',()=>{progress.theme=progress.theme==='dark'?'light':'dark';document.body.classList.toggle('dark',progress.theme==='dark');save()});
+document.body.classList.toggle('dark',progress.theme==='dark');
+if(T.length!==40||Q.length<40){console.error('Dades incompletes',T.length,Q.length)}
+render();
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+})();
